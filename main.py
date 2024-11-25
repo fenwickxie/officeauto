@@ -3,7 +3,6 @@ import os.path
 from FileOperate import DropDuplicates, Rename
 from FileOperate.Achieve import multithread_winrar_compress, multithread_winrar_uncompress
 
-# 按间距中的绿色按钮以运行脚本。
 if __name__ == '__main__':
 	# base_path = r'D:\Fenwick\Videos'
 	# for dir in os.listdir(base_path):
