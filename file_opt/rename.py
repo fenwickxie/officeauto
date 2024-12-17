@@ -2,8 +2,8 @@ import os
 import re
 from concurrent.futures import ThreadPoolExecutor
 
-from tools import calculate_time
-from tools import get_all_files_base
+from comm_utils import calculate_time
+from comm_utils import get_all_files_base
 
 
 class Rename:

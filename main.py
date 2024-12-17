@@ -1,7 +1,7 @@
 import os.path
 
-from FileOperate import DropDuplicates, Rename
-from FileOperate.Achieve import multithread_winrar_compress, multithread_winrar_uncompress
+from file_opt import drop_duplicates, Rename
+from file_opt.achieve import multithread_winrar_compress, multithread_winrar_uncompress
 
 if __name__ == '__main__':
 	# base_path = r'D:\Fenwick\Videos'

@@ -2,7 +2,7 @@ import os
 import tarfile
 import threading
 import zipfile
-from tools.PerformanceEval import calculate_time
+from comm_utils.PerformanceEval import calculate_time
 
 COMPRESSED_EXTENSIONS = {'.rar', '.zip', '.tar'}
 

@@ -7,9 +7,9 @@ import numpy as np
 from PIL import Image
 from numpy import linalg
 from concurrent.futures import ThreadPoolExecutor
-from tools import calculate_time
-from tools.OSTool import get_all_files_base
-from tools.StringTools import split_by_any_separator
+from comm_utils import calculate_time
+from comm_utils.OSTool import get_all_files_base
+from comm_utils.StringTools import split_by_any_separator
 
 
 def movefile(srcfile, dst_dir):  # 移动函数
