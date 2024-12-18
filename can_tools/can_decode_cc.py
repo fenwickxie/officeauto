@@ -1,9 +1,8 @@
 import cantools
-import can
 import pandas as pd
 import os
 from typing import Union, List, Optional
-from collections import defaultdict
+from asammdf import MDF
 
 StringPathLike = Union[str, os.PathLike]
 
@@ -44,50 +43,49 @@ def _read_can_files(dbc_input: Union[StringPathLike, List[StringPathLike]],
     can_files = load_can_files(can_input)
 
     for can_file in can_files:
-        if can_file.lower().endswith('.blf'):
-            log_data = can.BLFReader(can_file)
-        elif can_file.lower().endswith('.asc'):
-            log_data = can.ASCReader(can_file)
+        mdf = MDF(can_file)
+
+        # Filter signals based on signal_names if provided
+        if signal_names is not None:
+            filtered_mdf = mdf.filter(signal_names)
         else:
-            continue
+            filtered_mdf = mdf
 
-        # Dictionary to store decoded data for each DBC file
-        all_decoded = {dbc_path: defaultdict(list) for dbc_path, _ in dbcs}
+        # Convert to DataFrame with automatic interpolation
+        df = filtered_mdf.to_dataframe(raster=None, time_from_zero=False)
 
-        for msg in log_data:
-            for dbc_path, dbc in dbcs:
+        # Decode messages using DBC files
+        for dbc_path, dbc in dbcs:
+            decoded_signals = {}
+            for column in df.columns:
                 try:
-                    dec = dbc.decode_message(msg.arbitration_id, msg.data)
-                    if dec:
-                        for key, data in dec.items():
-                            if signal_names is None or key in signal_names:
-                                all_decoded[dbc_path][key].append([msg.timestamp, data])
+                    message_id = int(column.split()[0], 16)
+                    message = dbc.get_message_by_arbitration_id(message_id)
+                    if message:
+                        decoded_signal = {}
+                        for signal in message.signals:
+                            if signal.name in df.columns:
+                                decoded_signal[signal.name] = df[signal.name]
+                        decoded_signals.update(decoded_signal)
                 except:
                     pass
 
-        for dbc_path, decoded in all_decoded.items():
-            sigs = []
-            for k, v in decoded.items():
-                timestamps = [i[0] for i in v]
-                data = [i[1] for i in v]
-                s = pd.Series(data, index=pd.to_datetime(timestamps, unit='s'), name=k)
-                sigs.append(s)
-
-            df = pd.DataFrame(sigs).T
+            # Create a DataFrame from decoded signals
+            decoded_df = pd.DataFrame(decoded_signals)
 
             # Interpolate missing values
-            df.interpolate(method='time', inplace=True)
+            decoded_df.interpolate(method='time', inplace=True)
 
             # Create a unique filename for each combination of DBC and CAN files
             base_name = f"{os.path.splitext(os.path.basename(dbc_path))[0]}_{os.path.splitext(os.path.basename(can_file))[0]}"
             csv_filename = f"{base_name}.csv"
-            parquet_filename = f"{base_name}.parquet"
-            df.to_csv(csv_filename, encoding='utf-8-sig')
-            df.to_parquet(parquet_filename)
-
-
+            decoded_df.to_csv(csv_filename, encoding='utf-8-sig')
 if __name__ == '__main__':
-        # Example usage:
-        dbc_input = ["path/to/dbc1.dbc", "path/to/dbc2.dbc"]
-        blf_input = ["path/to/blf1.blf", "path/to/blf2.blf"]
-        _read_can_files(dbc_input, blf_input)
+    # Example usage:
+    dbc_input = ["path/to/dbc1.dbc", "path/to/dbc2.dbc"]
+    can_input = ["path/to/blf1.blf", "path/to/asc1.asc"]
+    signal_names = ['Signal1', 'Signal2']
+    _read_can_files(dbc_input, can_input, signal_names)
+
+
+
