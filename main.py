@@ -1,5 +1,4 @@
 import os.path
-
 from FileOperate import DropDuplicates, Rename
 from FileOperate.Achieve import multithread_winrar_compress, multithread_winrar_uncompress
 

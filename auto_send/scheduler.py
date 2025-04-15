@@ -155,7 +155,7 @@ class WeChatScheduler(QObject):
         
         # 尝试恢复窗口状态
         self.activate_previous_window()
-      def send_message_now(self, target, content):
+    def send_message_now(self, target, content):
         """立即发送消息，不影响定时任务运行状态"""
         if not target or not content:
             self.log_signal.emit("错误: 目标或内容为空")

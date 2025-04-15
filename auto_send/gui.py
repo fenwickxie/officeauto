@@ -12,7 +12,7 @@ from PyQt5.QtCore import Qt, QDateTime, QTime
 from PyQt5.QtGui import QIntValidator
 from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QLabel,
                              QLineEdit, QTextEdit, QPushButton, QGroupBox, QDateTimeEdit,
-                             QCheckBox, QComboBox, QSplitter, QPlainTextEdit)
+                             QCheckBox, QComboBox)
 
 
 class WeChatSchedulerUI(QMainWindow):
@@ -132,7 +132,7 @@ class WeChatSchedulerUI(QMainWindow):
         # 添加到左侧布局
         left_layout.addWidget(msg_group)
         left_layout.addWidget(time_group)
-def update_repeat_options(self):
+    def update_repeat_options(self):
         if self.repeat_type.currentText() == "每周":
             self.weekly_options.setVisible(True)
             self.monthly_options.setVisible(False)
