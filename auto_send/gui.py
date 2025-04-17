@@ -9,7 +9,7 @@
 """
 
 from PyQt5.QtCore import Qt, QDateTime, QTime
-from PyQt5.QtGui import QIntValidator
+from PyQt5.QtGui import QIntValidator, QKeySequence
 from PyQt5.QtWidgets import (
     QMainWindow,
     QVBoxLayout,
@@ -25,6 +25,8 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QSplitter,
     QPlainTextEdit,
+    QKeySequenceEdit,
+    QSpinBox,  # 添加 QSpinBox 用于时间偏移输入
 )
 from scheduler import STATUS
 
@@ -77,10 +79,10 @@ class WeChatSchedulerUI(QMainWindow):
         self.once_checkbox.toggled.connect(self.update_once_schedule)
 
         self.datetime_label = QLabel("发送时间:")
-        self.datetime_input = QDateTimeEdit()
-        self.datetime_input.setDateTime(QDateTime.currentDateTime().addSecs(60))
-        self.datetime_input.setDisplayFormat("yyyy-MM-dd HH:mm:ss.zzz")
-        # self.datetime_input.setMinimumDateTime(QDateTime.currentDateTime())
+        self.oncetime_input = QDateTimeEdit()
+        self.oncetime_input.setDateTime(QDateTime.currentDateTime().addSecs(60))
+        self.oncetime_input.setDisplayFormat("yyyy-MM-dd HH:mm:ss.zzz")
+        # self.oncetime_input.setMinimumDateTime(QDateTime.currentDateTime())
 
         # 循环定时
         self.repeat_checkbox = QCheckBox("循环定时")
@@ -107,22 +109,32 @@ class WeChatSchedulerUI(QMainWindow):
         monthly_layout.addWidget(self.day_label)
         monthly_layout.addWidget(self.day_input)
         self.monthly_options.setLayout(monthly_layout)
+        self.monthly_options.setEnabled(False)
         self.monthly_options.setVisible(False)
 
         self.repeat_time_label = QLabel("每天发送时间:")
         self.repeat_time_input = QDateTimeEdit()
         self.repeat_time_input.setDisplayFormat("HH:mm:ss.zzz")
         self.repeat_time_input.setTime(QTime(8, 0, 0))
+        self.repeat_time_input.setEnabled(False)
+
+        self.offset_label = QLabel("时间偏移(毫秒):")
+        self.offset_input = QSpinBox()
+        self.offset_input.setRange(-60000, 60000)  # 偏移范围为 -60秒 到 +60秒
+        self.offset_input.setSuffix(" ms")
+        self.offset_input.setValue(0)
 
         time_layout.addWidget(self.once_checkbox)
         time_layout.addWidget(self.datetime_label)
-        time_layout.addWidget(self.datetime_input)
+        time_layout.addWidget(self.oncetime_input)
         time_layout.addWidget(self.repeat_checkbox)
         time_layout.addWidget(self.repeat_type)
         time_layout.addWidget(self.weekly_options)
         time_layout.addWidget(self.monthly_options)
         time_layout.addWidget(self.repeat_time_label)
         time_layout.addWidget(self.repeat_time_input)
+        time_layout.addWidget(self.offset_label)
+        time_layout.addWidget(self.offset_input)
         time_group.setLayout(time_layout)
 
         # 控制按钮
@@ -153,6 +165,28 @@ class WeChatSchedulerUI(QMainWindow):
         # 右侧布局
         right_panel = QWidget()
         right_layout = QVBoxLayout()
+
+        # 快捷键设置
+        shortcut_group = QGroupBox("快捷键设置")
+        shortcut_layout = QVBoxLayout()
+
+        self.open_wechat_label = QLabel("打开应用快捷键:")
+        self.open_wechat_input = QKeySequenceEdit(QKeySequence("Ctrl+Alt+W"))
+        self.open_search_label = QLabel("打开搜索框快捷键:")
+        self.open_search_input = QKeySequenceEdit(QKeySequence("Alt+F"))
+        self.send_message_label = QLabel("发送消息快捷键:")
+        self.send_message_input = QKeySequenceEdit(QKeySequence("Ctrl+Enter"))
+
+        shortcut_layout.addWidget(self.open_wechat_label)
+        shortcut_layout.addWidget(self.open_wechat_input)
+        shortcut_layout.addWidget(self.open_search_label)
+        shortcut_layout.addWidget(self.open_search_input)
+        shortcut_layout.addWidget(self.send_message_label)
+        shortcut_layout.addWidget(self.send_message_input)
+        shortcut_group.setLayout(shortcut_layout)
+
+        # 添加到右侧布局
+        right_layout.addWidget(shortcut_group)
 
         self.log_label = QLabel("运行日志:")
         self.log_display = QPlainTextEdit()
@@ -187,7 +221,7 @@ class WeChatSchedulerUI(QMainWindow):
     def update_repeat_schedule(self):
         if self.repeat_checkbox.isChecked():
             self.once_checkbox.setChecked(False)
-            self.datetime_input.setEnabled(False)
+            self.oncetime_input.setEnabled(False)
             # 运行时禁止编辑
             if not self.scheduler.is_running:
                 self.repeat_type.setEnabled(True)
@@ -199,40 +233,55 @@ class WeChatSchedulerUI(QMainWindow):
 
     def update_once_schedule(self):
         if self.once_checkbox.isChecked():
-            self.repeat_checkbox.setVisible(False)
+            # self.repeat_checkbox.setVisible(False)
+            self.repeat_checkbox.setEnabled(True)
             self.repeat_checkbox.setChecked(False)
             self.repeat_type.setEnabled(False)
             if not self.scheduler.is_running:
-                self.datetime_input.setEnabled(True)
+                self.oncetime_input.setEnabled(True)
             else:
-                self.datetime_input.setEnabled(False)
-            self.weekly_options.setVisible(False)
-            self.monthly_options.setVisible(False)
-            self.repeat_time_label.setVisible(False)
-            self.repeat_time_input.setVisible(False)
+                self.oncetime_input.setEnabled(False)
+            self.weekly_options.setEnabled(False)
+            self.monthly_options.setEnabled(False)
+            # self.repeat_time_label.setEnabled(False)
+            self.repeat_time_input.setEnabled(False)
         else:
-            self.repeat_checkbox.setVisible(True)
+            self.repeat_checkbox.setEnabled(True)
             self.repeat_type.setEnabled(True)
+            self.weekly_options.setEnabled(True)
+            self.monthly_options.setEnabled(True)
+            # self.repeat_time_label.setEnabled(True)
+            self.repeat_time_input.setEnabled(True)
             self.update_repeat_options()
 
     def update_repeat_options(self):
         if self.repeat_type.currentIndex() == 0:  # 0 corresponds to "每周"
             self.weekly_options.setVisible(True)
+            self.weekly_options.setEnabled(True)
             self.monthly_options.setVisible(False)
+            self.monthly_options.setEnabled(False)
         elif self.repeat_type.currentIndex() == 1:  # 1 corresponds to "每月"
             self.weekly_options.setVisible(False)
+            self.weekly_options.setEnabled(False)
             self.monthly_options.setVisible(True)
+            self.monthly_options.setEnabled(True)
 
     def start_scheduler(self):
         target = self.target_input.text().strip()
         content = self.content_input.toPlainText().strip()
+        offset = self.offset_input.value()
 
-        # 禁用时间相关输入
-        self.set_time_inputs_enabled(False)
+        # 更新快捷键设置
+        shortcuts = {
+            "open_wechat": self.open_wechat_input.keySequence().toString(),
+            "open_search": self.open_search_input.keySequence().toString(),
+            "send_message": self.send_message_input.keySequence().toString(),
+        }
+        self.scheduler.update_shortcuts(shortcuts)
 
         if self.once_checkbox.isChecked():
-            scheduled_time = self.datetime_input.dateTime().toPyDateTime()
-            self.scheduler.start_one_time_schedule(target, content, scheduled_time)
+            scheduled_time = self.oncetime_input.dateTime().addMSecs(offset).toPyDateTime()
+            self.scheduler.start_once_schedule(target, content, scheduled_time)
         else:
             if self.repeat_type.currentIndex() == 0:  # 0 corresponds to "每周"
                 days = [i for i, cb in enumerate(self.weekdays) if cb.isChecked()]
@@ -242,28 +291,35 @@ class WeChatSchedulerUI(QMainWindow):
                 except:
                     days = []
 
-            send_time = self.repeat_time_input.time().toPyTime()
+            send_time = self.repeat_time_input.time().addMSecs(offset).toPyTime()
             self.scheduler.start_repeating_schedule(
-                target,
-                content,
-                days,
-                send_time,
-                self.repeat_type.currentIndex() == 0,
+                    target,
+                    content,
+                    days,
+                    send_time,
+                    self.repeat_type.currentIndex() == 0,
             )
+        # 禁用时间相关输入
+        self.set_time_inputs_enabled(False)
 
     def stop_scheduler(self):
+        self.scheduler.stop_scheduler()
         # 恢复时间相关输入的可用状态
         self.set_time_inputs_enabled(True)
-        self.scheduler.stop_scheduler()
 
     def set_time_inputs_enabled(self, enabled):
         """设置所有时间相关输入框的可用状态"""
-        self.datetime_input.setEnabled(enabled)
-        self.repeat_time_input.setEnabled(enabled)
+        self.oncetime_input.setEnabled(enabled)
+        self.once_checkbox.setEnabled(enabled)
+
+        self.repeat_checkbox.setEnabled(enabled)
+        self.repeat_type.setEnabled(enabled)
+        self.monthly_options.setEnabled(enabled)
         self.day_input.setEnabled(enabled)
+        self.weekly_options.setEnabled(enabled)
         for cb in self.weekdays:
             cb.setEnabled(enabled)
-        self.repeat_type.setEnabled(enabled)
+        self.repeat_time_input.setEnabled(enabled)
 
         # 根据当前选择的定时类型调整显示
         self.update_once_schedule()
@@ -290,7 +346,7 @@ class WeChatSchedulerUI(QMainWindow):
         self.log_display.appendPlainText(message)
         # 自动滚动到底部
         self.log_display.verticalScrollBar().setValue(
-            self.log_display.verticalScrollBar().maximum()
+                self.log_display.verticalScrollBar().maximum()
         )
 
     def update_status(self, status):

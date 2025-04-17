@@ -38,8 +38,19 @@ class WeChatScheduler(QObject):
         # 消息内容缓存
         self.target = ""
         self.content = ""
+        self.shortcuts = {
+            "open_wechat": "ctrl+alt+w",
+            "open_search": "alt+f",
+            "send_message": "ctrl+enter",
+        }
 
-    def start_one_time_schedule(self, target, content, scheduled_time):
+
+    def update_shortcuts(self, shortcuts):
+        """更新快捷键设置"""
+        self.shortcuts.update(shortcuts)
+        self.log_signal.emit(f"快捷键已更新: {self.shortcuts}")
+
+    def start_once_schedule(self, target, content, scheduled_time):
         """启动一次性定时任务"""
         self.onetime_schedule = True  # 设置一次性任务标志
         if not self.validate_inputs(target, content, scheduled_time):
@@ -117,7 +128,7 @@ class WeChatScheduler(QObject):
             if wait_seconds > self.preparation_time:
                 # 提前准备
                 self.log_signal.emit(
-                    f"等待 {wait_seconds - self.preparation_time:.1f} 秒后开始准备 {target_datetime.strftime('%H:%M:%S')} 的消息"
+                    f"等待 {wait_seconds - self.preparation_time:.1f} 秒后开始准备 {target_datetime.strftime('%Y-%m-%d %H:%M:%S.%f')} 的消息"
                 )
                 time.sleep(wait_seconds - self.preparation_time)
                 if not self.is_running:
@@ -125,7 +136,7 @@ class WeChatScheduler(QObject):
 
                 self.status_signal.emit(RUNNING)
                 self.log_signal.emit(
-                    f"开始准备 {target_datetime.strftime('%H:%M:%S')} 的消息"
+                    f"开始准备 {target_datetime.strftime('%Y-%m-%d %H:%M:%S.%f')} 的消息"
                 )
 
                 if self.prepare_message():
@@ -203,7 +214,8 @@ class WeChatScheduler(QObject):
         self.log_signal.emit("开始准备消息...")
         if self.prepare_message():
             # 计算剩余时间
-            remaining = (self.scheduled_time - datetime.now()).total_seconds() * 1000
+            # datetime.now() 返回的时间精度可以达到微秒级别（microseconds），而不是仅仅到毫秒级别（milliseconds）
+            remaining = int((self.scheduled_time - datetime.now()).total_seconds() * 1000)
             if remaining > 0:
                 self.status_signal.emit(RUNNING)
                 self.log_signal.emit(f"消息准备完成，等待 {remaining:.0f} 毫秒后发送")
@@ -219,12 +231,14 @@ class WeChatScheduler(QObject):
             self.current_window = pyautogui.getActiveWindow()
             self.log_signal.emit("保存当前窗口状态")
 
-            # 打开企业微信搜索 (Ctrl+Alt+W)
-            self.log_signal.emit("模拟按下 Ctrl+Alt+W 打开企业微信搜索")
-            keyboard.press_and_release("ctrl+alt+w")
-            time.sleep(0.5)  # 等待搜索框出现
-            keyboard.press_and_release("alt+f")
-            time.sleep(0.5)  # 等待搜索框出现
+            # 打开企业微信
+            self.log_signal.emit(f"模拟按下 {self.shortcuts['open_wechat']} 打开企业微信")
+            keyboard.press_and_release(self.shortcuts["open_wechat"])
+            time.sleep(0.8)  # 等待搜索框出现
+            # 按下Alt+F打开搜索框
+            self.log_signal.emit(f"模拟按下 {self.shortcuts['open_search']} 打开搜索框")
+            keyboard.press_and_release(self.shortcuts["open_search"])
+            time.sleep(0.8)  # 等待搜索框出现
 
             # 输入目标对话名称
             self.log_signal.emit(f"输入目标对话: {self.target}")
@@ -234,7 +248,7 @@ class WeChatScheduler(QObject):
             # 按Enter选择第一个结果
             self.log_signal.emit("模拟按下 Enter 选择对话")
             keyboard.press_and_release("enter")
-            time.sleep(0.5)  # 等待对话打开
+            time.sleep(1)  # 等待对话打开
 
             # 输入消息内容并保持分段
             self.log_signal.emit("开始输入消息内容")
@@ -242,7 +256,7 @@ class WeChatScheduler(QObject):
                 keyboard.write(line)
                 # Shift+Enter换行
                 keyboard.press_and_release("shift+enter")
-                time.sleep(0.05)
+                time.sleep(0.1)
 
             # 删除最后一个多余的换行
             keyboard.press_and_release("backspace")
@@ -258,14 +272,12 @@ class WeChatScheduler(QObject):
             return False
 
     def execute_send(self):
-        # """在精确时间执行发送操作"""
-        # if not self.is_running:
-        #     return
+        """在精确时间执行发送操作"""
         SEND_SUCCESS = True
         try:
             self.log_signal.emit("正在执行发送操作...")
-            # 只需按下Crtl+Enter键发送
-            keyboard.press_and_release("ctrl+enter")
+            self.log_signal.emit(f"模拟按下 {self.shortcuts['send_message']} 发送消息")
+            keyboard.press_and_release(self.shortcuts["send_message"])
             send_time = datetime.now().strftime("%H:%M:%S.%f")[:-3]
             status_msg = f"消息已于 ({send_time}发送)"
             time.sleep(0.5)

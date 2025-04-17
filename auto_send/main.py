@@ -26,4 +26,5 @@ if __name__ == "__main__":
         
         sys.exit(app.exec_())
     except Exception as e:
-        sys.exit("Error: {e}")
+        sys.exit(f"Error: {e}")
+
