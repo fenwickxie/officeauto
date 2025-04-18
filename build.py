@@ -22,7 +22,7 @@ app_name: str = f"auto_send_{system_name}_{machine_arch}_v{version}"
 auto_send_build = [
     "auto_send/main.py",  # 主入口文件
     f"--name={app_name}",  # 输出文件名
-    "--onedir",
+    "--onefile",
     "--windowed",
     "--icon=auto_send/icon.ico",
     "--hidden-import=PyQt5.QtCore",
@@ -30,13 +30,13 @@ auto_send_build = [
     "--hidden-import=PyQt5.QtWidgets",
     "--hidden-import=keyboard",
     "--hidden-import=pyautogui",
-    "--exclude-module=tkinter",
-    "--exclude-module=unittest",
-    "--exclude-module=numpy",
+    # "--exclude-module=tkinter",
+    # "--exclude-module=unittest",
+    # "--exclude-module=numpy",
     "--distpath=auto_send/dist",  # 输出目录
     "--workpath=auto_send/build",  # 构建目录
     "--clean",  # 清理临时文件
-    "--log-level=WARN",  # 日志级别
+    # "--log-level=WARN",  # 日志级别
 ]
 
 PyInstaller.__main__.run(auto_send_build)
