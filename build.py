@@ -13,16 +13,16 @@ version = "1.1.0"  # 版本号
 
 # 获取系统名称和架构
 system_name = platform.system()  # 返回 'Windows', 'Linux', 'Darwin' 等
-machine_arch = platform.machine()  # 返回 ''ARM', 'AMD64' 等
+machine_arch = platform.machine()  # 返回 'ARM', 'AMD64' 等
 
 # 动态生成名称
 app_name: str = f"auto_send_{system_name}_{machine_arch}_v{version}"
 
+# 打包配置
 auto_send_build = [
-    "auto_send/main.py",
-    f"--name={app_name}",
-    # "--onefile",  # 创建单文件捆绑的可执行文件
-    "--onedir",  # 创建包含一个可执行文件的单文件夹捆绑包（默认值）
+    "auto_send/main.py",  # 主入口文件
+    f"--name={app_name}",  # 输出文件名
+    "--onedir",
     "--windowed",
     "--icon=auto_send/icon.ico",
     "--hidden-import=PyQt5.QtCore",
@@ -30,9 +30,13 @@ auto_send_build = [
     "--hidden-import=PyQt5.QtWidgets",
     "--hidden-import=keyboard",
     "--hidden-import=pyautogui",
-    "--distpath=auto_send/dist",
-    "--workpath=auto_send/build",
-    "--clean",
-    "--log-level=WARN",
+    "--exclude-module=tkinter",
+    "--exclude-module=unittest",
+    "--exclude-module=numpy",
+    "--distpath=auto_send/dist",  # 输出目录
+    "--workpath=auto_send/build",  # 构建目录
+    "--clean",  # 清理临时文件
+    "--log-level=WARN",  # 日志级别
 ]
+
 PyInstaller.__main__.run(auto_send_build)
