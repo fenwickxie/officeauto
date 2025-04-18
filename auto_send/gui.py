@@ -28,7 +28,7 @@ from PyQt5.QtWidgets import (
     QKeySequenceEdit,
     QSpinBox,  # 添加 QSpinBox 用于时间偏移输入
 )
-from scheduler import STATUS
+from scheduler import STATUS, IDLE, RUNNING
 
 
 class WeChatSchedulerUI(QMainWindow):
@@ -218,53 +218,60 @@ class WeChatSchedulerUI(QMainWindow):
         self.repeat_checkbox.toggled.connect(self.update_repeat_schedule)
         self.repeat_type.currentIndexChanged.connect(self.update_repeat_options)
 
+    def update_ui_state(self):
+        """根据当前运行状态及一次性/循环定时状态更新输入框和按钮的可用性"""
+        is_running = self.scheduler.is_running
+
+        # 一次性定时相关
+        self.once_checkbox.setEnabled(not is_running)
+        self.oncetime_input.setEnabled(
+            not is_running and self.once_checkbox.isChecked()
+        )
+
+        # 循环定时相关
+        self.repeat_checkbox.setEnabled(not is_running)
+        self.repeat_type.setEnabled(not is_running and self.repeat_checkbox.isChecked())
+        self.weekly_options.setEnabled(
+            not is_running
+            and self.repeat_checkbox.isChecked()
+            and self.repeat_type.currentIndex() == 0
+        )
+        self.monthly_options.setEnabled(
+            not is_running
+            and self.repeat_checkbox.isChecked()
+            and self.repeat_type.currentIndex() == 1
+        )
+        self.repeat_time_input.setEnabled(
+            not is_running and self.repeat_checkbox.isChecked()
+        )
+
+        # 控制按钮
+        self.start_btn.setEnabled(not is_running)
+        self.stop_btn.setEnabled(is_running)
+        self.offset_input.setEnabled(not is_running)
+
     def update_repeat_schedule(self):
+        """更新循环定时相关选项的可见性和状态"""
         if self.repeat_checkbox.isChecked():
             self.once_checkbox.setChecked(False)
-            self.oncetime_input.setEnabled(False)
-            # 运行时禁止编辑
-            if not self.scheduler.is_running:
-                self.repeat_type.setEnabled(True)
-            else:
-                self.repeat_type.setEnabled(False)
             self.update_repeat_options()
-            self.repeat_time_label.setVisible(True)
-            self.repeat_time_input.setVisible(True)
+        self.update_ui_state()
 
     def update_once_schedule(self):
+        """更新一次性定时相关选项的状态"""
         if self.once_checkbox.isChecked():
-            # self.repeat_checkbox.setVisible(False)
-            self.repeat_checkbox.setEnabled(True)
             self.repeat_checkbox.setChecked(False)
-            self.repeat_type.setEnabled(False)
-            if not self.scheduler.is_running:
-                self.oncetime_input.setEnabled(True)
-            else:
-                self.oncetime_input.setEnabled(False)
-            self.weekly_options.setEnabled(False)
-            self.monthly_options.setEnabled(False)
-            # self.repeat_time_label.setEnabled(False)
-            self.repeat_time_input.setEnabled(False)
-        else:
-            self.repeat_checkbox.setEnabled(True)
-            self.repeat_type.setEnabled(True)
-            self.weekly_options.setEnabled(True)
-            self.monthly_options.setEnabled(True)
-            # self.repeat_time_label.setEnabled(True)
-            self.repeat_time_input.setEnabled(True)
-            self.update_repeat_options()
+        self.update_ui_state()
 
     def update_repeat_options(self):
-        if self.repeat_type.currentIndex() == 0:  # 0 corresponds to "每周"
+        """根据循环定时类型更新选项的可见性"""
+        if self.repeat_type.currentIndex() == 0:  # 每周
             self.weekly_options.setVisible(True)
-            self.weekly_options.setEnabled(True)
             self.monthly_options.setVisible(False)
-            self.monthly_options.setEnabled(False)
-        elif self.repeat_type.currentIndex() == 1:  # 1 corresponds to "每月"
+        elif self.repeat_type.currentIndex() == 1:  # 每月
             self.weekly_options.setVisible(False)
-            self.weekly_options.setEnabled(False)
             self.monthly_options.setVisible(True)
-            self.monthly_options.setEnabled(True)
+        self.update_ui_state()
 
     def start_scheduler(self):
         target = self.target_input.text().strip()
@@ -280,9 +287,11 @@ class WeChatSchedulerUI(QMainWindow):
         self.scheduler.update_shortcuts(shortcuts)
 
         if self.once_checkbox.isChecked():
-            scheduled_time = self.oncetime_input.dateTime().addMSecs(offset).toPyDateTime()
+            scheduled_time = (
+                self.oncetime_input.dateTime().addMSecs(offset).toPyDateTime()
+            )
             self.scheduler.start_once_schedule(target, content, scheduled_time)
-        else:
+        elif self.repeat_checkbox.isChecked():
             if self.repeat_type.currentIndex() == 0:  # 0 corresponds to "每周"
                 days = [i for i, cb in enumerate(self.weekdays) if cb.isChecked()]
             elif self.repeat_type.currentIndex() == 1:  # 1 corresponds to "每月"
@@ -293,19 +302,19 @@ class WeChatSchedulerUI(QMainWindow):
 
             send_time = self.repeat_time_input.time().addMSecs(offset).toPyTime()
             self.scheduler.start_repeating_schedule(
-                    target,
-                    content,
-                    days,
-                    send_time,
-                    self.repeat_type.currentIndex() == 0,
+                target,
+                content,
+                days,
+                send_time,
+                self.repeat_type.currentIndex(),
             )
-        # 禁用时间相关输入
-        self.set_time_inputs_enabled(False)
+        ## 禁用时间相关输入
+        # self.set_time_inputs_enabled(False)
 
     def stop_scheduler(self):
         self.scheduler.stop_scheduler()
-        # 恢复时间相关输入的可用状态
-        self.set_time_inputs_enabled(True)
+        ## 恢复时间相关输入的可用状态
+        # self.set_time_inputs_enabled(True)
 
     def set_time_inputs_enabled(self, enabled):
         """设置所有时间相关输入框的可用状态"""
@@ -346,22 +355,13 @@ class WeChatSchedulerUI(QMainWindow):
         self.log_display.appendPlainText(message)
         # 自动滚动到底部
         self.log_display.verticalScrollBar().setValue(
-                self.log_display.verticalScrollBar().maximum()
+            self.log_display.verticalScrollBar().maximum()
         )
 
     def update_status(self, status):
-        """更新状态显示和按钮状态"""
+        """更新状态显示并调整 UI"""
         self.status_label.setText(f"状态: {STATUS[status]}")
-
-        # 根据状态更新按钮
-        if status == 0:
-            # 空闲中状态
-            self.start_btn.setEnabled(True)
-            self.stop_btn.setEnabled(False)
-        else:
-            # 运行中状态
-            self.start_btn.setEnabled(False)
-            self.stop_btn.setEnabled(True)
+        self.update_ui_state()
 
     def clear_log(self):
         """清除日志"""
